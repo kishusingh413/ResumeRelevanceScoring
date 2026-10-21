@@ -25,10 +25,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-acn024rio9ggp4a3rf42g2a^ii&-y-k5g2fi$4p^m(o^1hlco5'
+SECRET_KEY = os.getenv('SECRET_KEY') or 'django-insecure-acn024rio9ggp4a3rf42g2a^ii&-y-k5g2fi$4p^m(o^1hlco5'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', '1') in ('1', 'true', 'True')
 
 ALLOWED_HOSTS = ['*']
 
@@ -63,6 +63,16 @@ CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ],
+}
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024
 
 ROOT_URLCONF = 'config.urls'
 

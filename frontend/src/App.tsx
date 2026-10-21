@@ -36,8 +36,8 @@ function App() {
       <Navbar />
       <div className="max-w-screen-2xl mx-auto">
         <Routes>
-            <Route path="/" Component={Home} />
-            <Route path="/result" Component={Result} />
+            <Route path="/" element={<Home />} />
+            <Route path="/result" element={<Result />} />
         </Routes>
       </div>
       <Toaster />

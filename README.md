@@ -47,8 +47,10 @@ This project streamlines the recruitment process by enabling employers to effici
 
 ### Quick Setup and Run Instructions
 
-1. **Clone the Repository**: Clone the project's GitHub repository to your local machine.
-2. **Configure Environment Variables**: Rename \`.env.example\` to \`.env\` and update the values according to your setup for both frontend and backend.
-3. **Docker Compose**: Navigate to the project directory and run \`docker compose up --build\` to start the application.
-4. **Access Web Interface**: Open \`http://localhost:3000\` in your browser to use the application.
+1. **Install Docker Desktop** and leave it running.
+2. **Add an API key** in `backend/.env` as `API_KEY`. A Gemini key uses Gemini. An OpenAI key uses OpenAI. The site can open without this key, but submitting a job will fail until the key is set.
+3. **Start the app** from this folder: `docker compose up --build`
+4. **Open** `http://localhost:3000`
+
+The frontend is published on port 3000 and proxies API calls to the backend on port 8000. You do not need Python or Node installed on the machine. After changing `backend/.env`, restart the backend with `docker compose up --build`.
 

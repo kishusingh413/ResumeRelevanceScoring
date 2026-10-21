@@ -1,6 +1,9 @@
 type GetInitialsCallback = (name: string) => string;
 
 export const getInitials: GetInitialsCallback = (name) => {
+  if (!name) {
+    return '?';
+  }
   const words = name.trim().split(/\s+/);
   if (words.length === 0) {
     return '';

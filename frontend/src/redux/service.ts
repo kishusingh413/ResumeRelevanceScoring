@@ -2,26 +2,20 @@ import { createAsyncThunk } from '@reduxjs/toolkit'
 import axios from 'axios'
 
 const client = axios.create({
-  baseURL: process.env.REACT_APP_BASE_URL,
+  baseURL: process.env.REACT_APP_BASE_URL || '',
 })
+
+const apiErrorMessage = (error: any) =>
+  error.response?.data?.error || error.response?.data?.message || error.message;
 
 export const createTask = createAsyncThunk(
   'task/create',
   async (_, { rejectWithValue }) => {
     try {
-      const config = {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      };
-      const { data } = await client.post('/api/v1/create-task/', config);
+      const { data } = await client.post('/api/v1/create-task/', {});
       return data;
     } catch (error: any) {
-      if (error.response?.data?.message) {
-        return rejectWithValue(error.response.data.message);
-      } else {
-        return rejectWithValue(error.message);
-      }
+      return rejectWithValue(apiErrorMessage(error));
     }
   }
 );
@@ -40,11 +34,7 @@ export const runTask = createAsyncThunk(
       const { data } = await client.put('/api/v1/run-task/', task.job, config);
       return data;
     } catch (error: any) {
-      if (error.response?.data?.message) {
-        return rejectWithValue(error.response.data.message);
-      } else {
-        return rejectWithValue(error.message);
-      }
+      return rejectWithValue(apiErrorMessage(error));
     }
   }
 );
@@ -67,11 +57,7 @@ export const addResumes = createAsyncThunk(
       );
       return response;
     } catch (error: any) {
-      if (error.response?.data?.error) {
-        return rejectWithValue(error.response.data.error);
-      } else {
-        return rejectWithValue(error.message);
-      }
+      return rejectWithValue(apiErrorMessage(error));
     }
   }
 );

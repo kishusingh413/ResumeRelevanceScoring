@@ -8,8 +8,10 @@ from django.contrib.auth.models import AnonymousUser
 class Authentication(authentication.BaseAuthentication):
     def authenticate(self, request):
         try:
-            token = request.META.get('HTTP_AUTHORIZATION').split(' ')[1] 
-
+            header = request.META.get('HTTP_AUTHORIZATION')
+            if not header or ' ' not in header:
+                raise exceptions.AuthenticationFailed('Unauthenticated')
+            token = header.split(' ')[1]
             if not token:
                 raise exceptions.AuthenticationFailed('Unauthenticated')
 

@@ -37,7 +37,7 @@ export function ResumeDetailDialog({ resume }: { readonly resume: ResumeType }) 
             <ScrollArea className="sm:h-[15em] rounded-md border">
               <CardContent className="mt-4 space-y-2">
                 <div className="grid grid-cols-1 gap-2">
-                  {Object.entries(resume.college).map(([key, value]) => (
+                  {Object.entries(resume.college || {}).map(([key, value]) => (
                     <div key={key} className="grid grid-cols-5 gap-2">
                       <p className="text-sm font-medium col-span-1 font-medium">{key.charAt(0).toUpperCase() + key.slice(1)}:&emsp;&emsp;&emsp;</p>
                       <span className="text-sm col-span-4 text-muted-foreground">{value}</span>
@@ -56,9 +56,9 @@ export function ResumeDetailDialog({ resume }: { readonly resume: ResumeType }) 
                       <p className="text-sm font-medium flex">{project.project_title} <Badge variant="secondary" className="ml-2 text-primary">Relevancy: {project.relevancy}</Badge></p>
                       <div className="flex flex-row items-center space-x-2 text-sm text-muted-foreground">
                         <CalendarDays className="w-3"/>
-                        <span className="text-sm">Start: {project.time_duration.start} - End: {project.time_duration.end}</span>
+                        <span className="text-sm">Start: {project.time_duration?.start} - End: {project.time_duration?.end}</span>
                         <CalendarFold className="w-3"/>
-                        <span className="text-sm">{project.time_duration.duration_months} month</span>
+                        <span className="text-sm">{project.time_duration?.duration_months} month</span>
                       </div>
                       <span className="text-sm mt-3 mb-1">{project.short_description}</span>
                       <span className="text-sm text-muted-foreground">Tech Stack: {project.tech_stack?.join(", ")}</span>
@@ -77,9 +77,9 @@ export function ResumeDetailDialog({ resume }: { readonly resume: ResumeType }) 
                       <p className="text-sm font-medium flex">{experience.role} | {experience.organization} <Badge variant="secondary" className="ml-2 text-primary">Relevancy: {experience.relevancy}</Badge></p>
                       <div className="flex flex-row items-center space-x-2 text-sm text-muted-foreground">
                         <CalendarDays className="w-3"/>
-                        <span className="text-sm">Start: {experience.time_duration.start} - End: {experience.time_duration.end}</span>
+                        <span className="text-sm">Start: {experience.time_duration?.start} - End: {experience.time_duration?.end}</span>
                         <CalendarFold className="w-3"/>
-                        <span className="text-sm">{experience.time_duration.duration_months} month</span>
+                        <span className="text-sm">{experience.time_duration?.duration_months} month</span>
                       </div>
                       <p className="text-sm  mt-3 mb-1">{experience.short_description}</p>
                       <p className="text-sm text-sm text-muted-foreground">Tech Stack: {experience.tech_stack?.join(", ")}</p>

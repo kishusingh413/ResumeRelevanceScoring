@@ -22,7 +22,11 @@ class ResumeFileSerializer(serializers.ModelSerializer):
 
         if representation['details']:
             details = json.loads(representation['details'])
+            if isinstance(details, str):
+                details = json.loads(details)
             del representation['details']
-            for key, value in details.items():
-                representation[key] = value
+            if isinstance(details, dict):
+                for key, value in details.items():
+                    representation[key] = value
+        representation['relevance_score'] = representation.get('relevance_score', instance.relevance_score)
         return representation

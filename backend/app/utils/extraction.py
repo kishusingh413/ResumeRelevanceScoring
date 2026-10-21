@@ -1,64 +1,37 @@
-import fitz  # PyMuPDF
-import openai
-import tiktoken
 import os
-import time
+
+import fitz
 import pytesseract
 from PIL import Image
 
-# Configure pytesseract path
-# pytesseract.pytesseract.tesseract_cmd = r'<path_to_your_tesseract_executable>'
-# e.g., on Windows, it might look like: C:\Program Files\Tesseract-OCR\tesseract.exe
-# e.g., on Linux, it might look like: pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
-pytesseract.pytesseract.tesseract_cmd = os.getenv('TESSERACT_CMD', 'tesseract')
+from .llm_client import complete, parse_json_object
 
-# Configure OpenAI API key
-openai.api_key = os.getenv('OPENAI_API_KEY')
+pytesseract.pytesseract.tesseract_cmd = os.getenv("TESSERACT_CMD") or "tesseract"
+
 
 def extract_text_from_pdf(pdf_path):
     doc = fitz.open(pdf_path)
-    text = ""
-    for page in doc:
-        text += page.get_text()
-    if len(text) < 40:
-        text = ocr_pdf(doc)
-    return text
+    try:
+        text = ""
+        for page in doc:
+            text += page.get_text()
+        if len(text.strip()) < 40:
+            text = ocr_pdf(doc)
+        return text
+    finally:
+        doc.close()
+
 
 def ocr_pdf(doc):
     text = ""
     for page_num in range(len(doc)):
         page = doc.load_page(page_num)
         pix = page.get_pixmap()
-        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+        mode = "RGBA" if pix.n == 4 else "RGB"
+        img = Image.frombytes(mode, [pix.width, pix.height], pix.samples)
         text += pytesseract.image_to_string(img)
     return text
 
-def query_gpt(prompt):
-    max_retries = 3
-    retry_delay = 25
-    try_count = 0
-
-    encoding = tiktoken.encoding_for_model(os.getenv('GPT_MODEL'))
-    prompt_tokens = len(encoding.encode(prompt))
-    max_completion_tokens = int(os.getenv('GPT_MODLE_CONTEXT_WINDOW')) - prompt_tokens 
-
-    while try_count < max_retries:
-        try:
-            response = openai.completions.create(
-                model=os.getenv('GPT_MODEL'),
-                prompt=prompt,
-                temperature=0.5,
-                max_tokens=min(2048, max_completion_tokens),
-                top_p=1.0,
-                frequency_penalty=0.0,
-                presence_penalty=0.0
-            )
-            return response.choices[0].text.strip()
-        except Exception as e:
-            print(f"Error processing prompt: {str(e)}")
-            print(f"\nRetrying in {retry_delay} seconds...")
-            time.sleep(retry_delay)
-            try_count += 1
 
 def extract_from_gpt(text):
     prompt = """Transform the provided resume text into a JSON object strictly adhering to the format below. Use 'month,yyyy' for dates (e.g., May,2024) and express durations in months, keep descriptions concise, max 1-2 lines. Use 'N/A' for missing info. Only include the JSON output in your response.
@@ -74,8 +47,9 @@ def extract_from_gpt(text):
                 "time_duration": {
                     "start": "month,yyyy",
                     "end": "month,yyyy",
-                    "duration_months": Duration
-                }
+                    "duration_months": 0
+                },
+                "relevancy": 0
             }
         ],
         "professional_experience": [
@@ -87,30 +61,96 @@ def extract_from_gpt(text):
                 "time_duration": {
                     "start": "month,yyyy",
                     "end": "month,yyyy",
-                    "duration_months": Duration
-                }
+                    "duration_months": 0
+                },
+                "relevancy": 0
             }
         ],
         "college": {
             "name": "College Name",
             "branch": "Branch",
             "degree": "Degree",
-            "cgpa": CGPA,
+            "cgpa": 0,
             "start": "month,yyyy",
             "end": "month,yyyy"
         }
     }
 
-    Directly parse and structure the resume text into this JSON format, ensuring all fields are accurately filled with the provided data or marked as 'N/A' for string and 0 for number if unavailable."""
+    Directly parse and structure the resume text into this JSON format, ensuring all fields are accurately filled with the provided data or marked as 'N/A' for string and 0 for number if unavailable.
 
-    extracted_text = query_gpt(prompt + "\n\nResume Text:\n" + text)
-    return extracted_text
+    Resume Text:
+    """ + text
+    return complete(prompt, temperature=0.2, max_tokens=4096)
+
+
+def _as_list(value):
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str) and value and value != "N/A":
+        return [value]
+    return []
+
+
+def _duration(value):
+    value = value if isinstance(value, dict) else {}
+    return {
+        "start": value.get("start") or "N/A",
+        "end": value.get("end") or "N/A",
+        "duration_months": value.get("duration_months") or 0,
+    }
+
+
+def normalize_resume(data):
+    if not isinstance(data, dict):
+        raise ValueError("Extracted resume details were not a JSON object.")
+
+    college = data.get("college") if isinstance(data.get("college"), dict) else {}
+    projects = []
+    for project in data.get("projects") or []:
+        if not isinstance(project, dict):
+            continue
+        projects.append({
+            "project_title": project.get("project_title") or "N/A",
+            "short_description": project.get("short_description") or "N/A",
+            "tech_stack": _as_list(project.get("tech_stack")),
+            "time_duration": _duration(project.get("time_duration")),
+            "relevancy": project.get("relevancy") or 0,
+        })
+
+    experiences = []
+    for experience in data.get("professional_experience") or []:
+        if not isinstance(experience, dict):
+            continue
+        experiences.append({
+            "role": experience.get("role") or "N/A",
+            "organization": experience.get("organization") or "N/A",
+            "short_description": experience.get("short_description") or "N/A",
+            "tech_stack": _as_list(experience.get("tech_stack")),
+            "time_duration": _duration(experience.get("time_duration")),
+            "relevancy": experience.get("relevancy") or 0,
+        })
+
+    return {
+        "candidate_name": data.get("candidate_name") or "Unknown",
+        "email": data.get("email") or "N/A",
+        "projects": projects,
+        "professional_experience": experiences,
+        "college": {
+            "name": college.get("name") or "N/A",
+            "branch": college.get("branch") or "N/A",
+            "degree": college.get("degree") or "N/A",
+            "cgpa": college.get("cgpa") if college.get("cgpa") is not None else 0,
+            "start": college.get("start") or "N/A",
+            "end": college.get("end") or "N/A",
+        },
+        "relevance_score": data.get("relevance_score") or 0,
+    }
+
 
 def extract_details(pdf_path):
     text = extract_text_from_pdf(pdf_path)
-    resume_details = extract_from_gpt(text)
-    
-    start_index = resume_details.find('{')
-    end_index = resume_details.rfind('}')
-    resume_details = resume_details[start_index:end_index+1]
-    return resume_details
+    if not text or not text.strip():
+        raise ValueError(
+            "Could not read any text from this PDF. Scanned resumes need the Tesseract language data installed in the backend container."
+        )
+    return normalize_resume(parse_json_object(extract_from_gpt(text)))

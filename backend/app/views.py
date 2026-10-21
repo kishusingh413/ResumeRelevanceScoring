@@ -14,6 +14,7 @@ from .utils.scoring import score_resume_details
 from .utils.auth import Authentication
 
 @api_view(['POST'])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def create_task(request):
     try:
@@ -56,13 +57,14 @@ def delete_file(request, file_id):
         return JsonResponse({'error': str(e)}, status=400)
 
 @api_view(['GET'])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def serve_file(request, file_name):
-    file_path = os.path.join(settings.MEDIA_ROOT, 'resumes', file_name)
+    safe_name = os.path.basename(file_name)
+    file_path = os.path.join(settings.MEDIA_ROOT, 'resumes', safe_name)
     if os.path.exists(file_path):
         return FileResponse(open(file_path, 'rb'), content_type='application/pdf')
-    else:
-        return JsonResponse({'error': 'The requested pdf was not found'}, status=404)
+    return JsonResponse({'error': 'The requested pdf was not found'}, status=404)
 
 @api_view(['PUT'])
 @authentication_classes([Authentication])
@@ -79,12 +81,18 @@ def run_task(request):
             if not resume_file.details:
                 details = extract_details(resume_file.file.path)
                 resume_file.details = json.dumps(details)
+                resume_file.save()
             else:
                 details = json.loads(resume_file.details)
-            
+                if isinstance(details, str):
+                    details = json.loads(details)
+
             resume_details = score_resume_details(task.role, task.description, details)
-            resume_file.relevance_score = json.loads(resume_details)['relevance_score']
-            resume_file.details = resume_details
+            try:
+                resume_file.relevance_score = float(resume_details.get('relevance_score') or 0)
+            except (TypeError, ValueError):
+                resume_file.relevance_score = 0
+            resume_file.details = json.dumps(resume_details)
             resume_file.save()
 
         serialized_files = ResumeFileSerializer(resume_files, many=True)
